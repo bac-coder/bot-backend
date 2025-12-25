@@ -11,12 +11,14 @@ from aiogram.types import BufferedInputFile
 # Renderda "Environment Variables" bo'limiga BOT_TOKEN qo'shiladi
 TOKEN = os.getenv("BOT_TOKEN")
 
-# Agar token bo'lmasa xato bermasligi uchun tekshiruv (lokal test uchun)
-if not TOKEN:
-    print("DIQQAT: BOT_TOKEN topilmadi! Render Environment Variables tekshiring.")
-
 app = FastAPI()
-bot = Bot(token=TOKEN) if TOKEN else None
+
+# Token borligini tekshiramiz
+if TOKEN:
+    bot = Bot(token=TOKEN)
+else:
+    bot = None
+    print("DIQQAT: BOT_TOKEN topilmadi! Render Environment Variables tekshiring.")
 
 # 2. CORS (Xavfsizlik) - Sayt serverga bog'lanishi uchun ruxsat
 app.add_middleware(
@@ -31,7 +33,7 @@ app.add_middleware(
 class FileRequest(BaseModel):
     telegram_id: int
     file_data: str  # Base64 formatidagi fayl kodi
-    file__name__: str
+    file_name: str
     file_type: str
     price: int = 0
 
@@ -39,10 +41,10 @@ class FileRequest(BaseModel):
 @app.post("/webhook/download-file")
 async def receive_file(request: FileRequest):
     if not bot:
-        raise HTTPException(status_code=500, detail="Bot tokeni topilmadi serverda.")
+        raise HTTPException(status_code=500, detail="Bot tokeni topilmadi serverda. Environment Variable BOT_TOKEN qo'shilmagan.")
 
     try:
-        print(f"?? Fayl qabul qilindi: {request.file__name__} ({request.telegram_id})")
+        print(f"?? Fayl qabul qilindi: {request.file_name} ({request.telegram_id})")
 
         # Base64 kodni tozalash (data:application/pdf;base64, qismini olib tashlash)
         if "," in request.file_data:
@@ -54,13 +56,13 @@ async def receive_file(request: FileRequest):
         file_bytes = base64.b64decode(encoded)
 
         # Telegram uchun fayl obyektini yasash
-        input_file = BufferedInputFile(file_bytes, filename=request.file__name__)
+        input_file = BufferedInputFile(file_bytes, filename=request.file_name)
 
         # Foydalanuvchiga yuborish
         await bot.send_document(
             chat_id=request.telegram_id,
             document=input_file,
-            caption=f"? <b>{request.file__name__}</b> tayyor!\n\n?? Xizmat ko'rsatildi.",
+            caption=f"? <b>{request.file_name}</b> tayyor!\n\n?? Xizmat ko'rsatildi.",
             parse_mode="HTML"
         )
 
@@ -68,7 +70,7 @@ async def receive_file(request: FileRequest):
         return {
             "status": "success", 
             "message": "Yuborildi",
-            "new_balance": 50000 # Bu yerda keyinchalik haqiqiy balans logikasini ulashingiz mumkin
+            "new_balance": 50000 
         }
 
     except Exception as e:
@@ -76,6 +78,7 @@ async def receive_file(request: FileRequest):
         # Saytga xatolik haqida xabar qaytarish
         raise HTTPException(status_code=500, detail=str(e))
 
-# 5. Ishga tushirish (Render o'zi shuni chaqiradi)
+# 5. ISHGA TUSHIRISH (Eng muhim joyi)
+# DIQQAT: name va main so'zlarining ikki yonida ikkitadan pastki chiziq (__) bo'lishi shart!
 if name == "main":
     uvicorn.run(app, host="0.0.0.0", port=10000)
