@@ -31,7 +31,7 @@ app.add_middleware(
 class FileRequest(BaseModel):
     telegram_id: int
     file_data: str  # Base64 formatidagi fayl kodi
-    file_name: str
+    file__name__: str
     file_type: str
     price: int = 0
 
@@ -42,7 +42,7 @@ async def receive_file(request: FileRequest):
         raise HTTPException(status_code=500, detail="Bot tokeni topilmadi serverda.")
 
     try:
-        print(f"?? Fayl qabul qilindi: {request.file_name} ({request.telegram_id})")
+        print(f"?? Fayl qabul qilindi: {request.file__name__} ({request.telegram_id})")
 
         # Base64 kodni tozalash (data:application/pdf;base64, qismini olib tashlash)
         if "," in request.file_data:
@@ -54,13 +54,13 @@ async def receive_file(request: FileRequest):
         file_bytes = base64.b64decode(encoded)
 
         # Telegram uchun fayl obyektini yasash
-        input_file = BufferedInputFile(file_bytes, filename=request.file_name)
+        input_file = BufferedInputFile(file_bytes, filename=request.file__name__)
 
         # Foydalanuvchiga yuborish
         await bot.send_document(
             chat_id=request.telegram_id,
             document=input_file,
-            caption=f"? <b>{request.file_name}</b> tayyor!\n\n?? Xizmat ko'rsatildi.",
+            caption=f"? <b>{request.file__name__}</b> tayyor!\n\n?? Xizmat ko'rsatildi.",
             parse_mode="HTML"
         )
 
